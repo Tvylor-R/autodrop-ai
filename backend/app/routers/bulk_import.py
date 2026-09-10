@@ -10,7 +10,7 @@ from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
 from app.database.product_model import Product
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 from app.integrations.shopify import create_product
 
 logger = logging.getLogger(__name__)
@@ -25,13 +25,8 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 MAX_ROWS = 200
 
 
-def _get_store(db: Session, shop: str) -> Store:
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    if not store.access_token:
-        raise HTTPException(status_code=400, detail="Store not connected via OAuth")
-    return store
+def _get_store(db: Session, user: User, shop: str) -> Store:
+    return get_user_store(db, user, shop)
 
 
 def _save_local_product(db: Session, store_id: int, product: dict, cost: float = None) -> Product:
@@ -99,7 +94,7 @@ async def import_products(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")

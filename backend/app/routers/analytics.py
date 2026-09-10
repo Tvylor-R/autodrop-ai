@@ -7,7 +7,7 @@ from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
 from app.database.webhook_models import Order
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 
 
 router = APIRouter(
@@ -16,11 +16,8 @@ router = APIRouter(
 )
 
 
-def _get_store(db: Session, shop: str) -> Store:
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
+def _get_store(db: Session, user: User, shop: str) -> Store:
+    return get_user_store(db, user, shop)
 
 
 @router.get("/summary")
@@ -30,7 +27,7 @@ def analytics_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     since = datetime.utcnow() - timedelta(days=days)
 
@@ -89,7 +86,7 @@ def analytics_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     since = datetime.utcnow() - timedelta(days=days)
 
     orders = (
@@ -117,7 +114,7 @@ def analytics_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     since = datetime.utcnow() - timedelta(days=days)
 
     orders = (
@@ -145,7 +142,7 @@ def analytics_best_products(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     since = datetime.utcnow() - timedelta(days=days)
 
     orders = (

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 from app.services.store_service import save_store
 from app.services.shopify_service import sync_products
 from app.integrations.shopify import (
@@ -67,10 +67,7 @@ def sync(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    store = get_user_store(db, current_user, shop)
 
     result = sync_products(db, store.id)
 
@@ -81,11 +78,8 @@ def sync(
 
 
 @router.get("/test")
-def test(shop: str, db: Session = Depends(get_db)):
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+def test(shop: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    store = get_user_store(db, current_user, shop)
 
     return {
         "shop": store.shop_domain,

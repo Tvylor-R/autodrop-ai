@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 from app.schemas.notification import UnreadCountResponse
 from app.services import notification_service
 
@@ -15,11 +15,8 @@ router = APIRouter(
 )
 
 
-def _get_store(db: Session, shop: str) -> Store:
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
+def _get_store(db: Session, user: User, shop: str) -> Store:
+    return get_user_store(db, user, shop)
 
 
 @router.get("")
@@ -30,7 +27,7 @@ def list_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return notification_service.list_notifications(
         db, store.id, unread_only=unread_only, limit=limit
     )
@@ -42,7 +39,7 @@ def get_unread_count(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return {"count": notification_service.unread_count(db, store.id)}
 
 
@@ -53,7 +50,7 @@ def mark_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     notification = notification_service.mark_read(
         db, notification_id, store.id
     )
@@ -68,5 +65,5 @@ def deliver(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return notification_service.deliver_pending(db, store.id)

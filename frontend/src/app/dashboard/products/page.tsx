@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import StoreSwitcher from "@/components/StoreSwitcher";
 import {
   getProducts,
   createProduct,
@@ -25,7 +26,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
-  const { token, shop, logout } = useAuth();
+  const { token, shop } = useAuth();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,12 +246,7 @@ export default function ProductsPage() {
           >
             Dashboard
           </button>
-          <button
-            onClick={logout}
-            className="text-gray-400 hover:text-white text-sm transition"
-          >
-            Logout
-          </button>
+          <StoreSwitcher />
         </div>
       </nav>
 

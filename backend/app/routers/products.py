@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user, get_user_store
 from app.database.models import User
 from app.database.store_model import Store
 from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
@@ -18,13 +18,6 @@ router = APIRouter(
     prefix="/products",
     tags=["Products"]
 )
-
-
-def get_user_store(db: Session, user: User, shop: str = None):
-    store = db.query(Store).filter(Store.shop_domain == shop).first() if shop else None
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
 
 
 @router.get("/", response_model=List[ProductResponse])

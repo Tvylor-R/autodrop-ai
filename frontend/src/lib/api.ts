@@ -90,6 +90,17 @@ export async function getStoreInfo(token: string, shop: string) {
   return api(`/store/info?shop=${encodeURIComponent(shop)}`, { token });
 }
 
+export async function getMyStores(token: string) {
+  return api(`/stores/mine`, { token });
+}
+
+export async function claimStore(token: string, shop: string) {
+  return api(`/stores/claim?shop=${encodeURIComponent(shop)}`, {
+    method: "POST",
+    token,
+  });
+}
+
 export async function getProducts(token: string, shop: string) {
   return api(`/products/?shop=${encodeURIComponent(shop)}`, { token });
 }

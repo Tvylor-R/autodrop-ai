@@ -9,6 +9,7 @@ class Store(Base):
     __tablename__ = "stores"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
     shop_domain = Column(String, unique=True, index=True)
     access_token = Column(String)
     notification_email = Column(String(255))

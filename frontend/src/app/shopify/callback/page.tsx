@@ -4,22 +4,24 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { claimStore } from "@/lib/api";
 
 function CallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setShop } = useAuth();
+  const { token, setShop } = useAuth();
 
   const shop = searchParams.get("shop") || "";
   const status = searchParams.get("status");
 
   useEffect(() => {
-    if (shop && status === "success") {
+    if (shop && status === "success" && token) {
+      claimStore(token, shop).catch(() => {});
       setShop(shop);
       const t = setTimeout(() => router.replace("/dashboard"), 2500);
       return () => clearTimeout(t);
     }
-  }, [shop, status, setShop, router]);
+  }, [shop, status, token, setShop, router]);
 
   const connected = Boolean(shop) && status === "success";
 

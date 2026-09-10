@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 from app.schemas.automation import (
     RuleCreate,
     RuleUpdate,
@@ -21,11 +21,8 @@ router = APIRouter(
 )
 
 
-def _get_store(db: Session, shop: str) -> Store:
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
+def _get_store(db: Session, user: User, shop: str) -> Store:
+    return get_user_store(db, user, shop)
 
 
 def _get_owned_rule(db: Session, rule_id: int, store_id: int):
@@ -41,7 +38,7 @@ def list_rules(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return automation_service.get_rules(db, store.id)
 
 
@@ -52,7 +49,7 @@ def create_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return automation_service.create_rule(
         db,
         store.id,
@@ -71,7 +68,7 @@ def update_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     rule = _get_owned_rule(db, rule_id, store.id)
     return automation_service.update_rule(
         db,
@@ -89,7 +86,7 @@ def toggle_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     rule = _get_owned_rule(db, rule_id, store.id)
     return automation_service.update_rule(
         db, rule, enabled=not rule.enabled
@@ -103,7 +100,7 @@ def run_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     rule = _get_owned_rule(db, rule_id, store.id)
     return automation_service.run_rule_now(db, store, rule)
 
@@ -115,7 +112,7 @@ def delete_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     rule = _get_owned_rule(db, rule_id, store.id)
     automation_service.delete_rule(db, rule)
 
@@ -127,5 +124,5 @@ def list_runs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return automation_service.get_runs(db, store.id, rule_id=rule_id)

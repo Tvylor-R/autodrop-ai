@@ -5,7 +5,7 @@ from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
 from app.database.webhook_models import Order, InventoryLevel
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 from app.schemas.shopify import OrderResponse, InventoryResponse
 from app.schemas.store import StoreInfoResponse, StoreSettingsUpdate
 from app.integrations.shopify import get_orders, get_inventory_levels, register_webhooks
@@ -17,11 +17,8 @@ router = APIRouter(
 )
 
 
-def _get_store(db: Session, shop: str) -> Store:
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
+def _get_store(db: Session, user: User, shop: str) -> Store:
+    return get_user_store(db, user, shop)
 
 
 @router.get("/info", response_model=StoreInfoResponse)
@@ -30,7 +27,7 @@ def store_info(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     return {
         "shop_domain": store.shop_domain,
@@ -49,7 +46,7 @@ def update_store_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     if payload.notification_email is not None:
         store.notification_email = payload.notification_email
@@ -77,7 +74,7 @@ def list_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     orders = (
         db.query(Order)
@@ -95,7 +92,7 @@ def list_live_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     if not store.access_token:
         raise HTTPException(status_code=400, detail="Store not connected via OAuth")
@@ -110,7 +107,7 @@ def list_inventory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     levels = (
         db.query(InventoryLevel)
@@ -127,7 +124,7 @@ def list_live_inventory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     if not store.access_token:
         raise HTTPException(status_code=400, detail="Store not connected via OAuth")
@@ -143,7 +140,7 @@ def low_stock_alerts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     low_stock = (
         db.query(InventoryLevel)
@@ -175,7 +172,7 @@ def setup_webhooks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     if not store.access_token:
         raise HTTPException(status_code=400, detail="Store not connected via OAuth")

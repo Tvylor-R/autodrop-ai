@@ -5,7 +5,7 @@ from app.database.database import get_db
 from app.database.models import User
 from app.database.store_model import Store
 from app.database.product_model import Product
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_user_store
 from app.schemas.shopify import (
     ShopifyProductCreate,
     OrderFulfillRequest,
@@ -27,10 +27,8 @@ router = APIRouter(
 )
 
 
-def _get_store(db: Session, shop: str) -> Store:
-    store = db.query(Store).filter(Store.shop_domain == shop).first()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+def _get_store(db: Session, user: User, shop: str) -> Store:
+    store = get_user_store(db, user, shop)
     if not store.access_token:
         raise HTTPException(status_code=400, detail="Store not connected via OAuth")
     return store
@@ -42,7 +40,7 @@ def list_locations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
     return get_locations(shop, store.access_token)
 
 
@@ -53,7 +51,7 @@ def create_shopify_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     variants = [
         {
@@ -110,7 +108,7 @@ def fulfill(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     try:
         result = fulfill_order(
@@ -135,7 +133,7 @@ def cancel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     try:
         result = cancel_order(
@@ -157,7 +155,7 @@ def set_inventory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    store = _get_store(db, shop)
+    store = _get_store(db, current_user, shop)
 
     try:
         result = update_inventory_level(

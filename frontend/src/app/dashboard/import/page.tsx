@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { importProductsFromCsv, downloadTemplate, syncProducts } from "@/lib/api";
+import StoreSwitcher from "@/components/StoreSwitcher";
 
 interface ImportResult {
   total: number;
@@ -19,7 +20,7 @@ interface ImportResult {
 }
 
 export default function ImportPage() {
-  const { token, shop, logout } = useAuth();
+  const { token, shop } = useAuth();
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -84,12 +85,7 @@ export default function ImportPage() {
           >
             Products
           </button>
-          <button
-            onClick={logout}
-            className="text-gray-400 hover:text-white text-sm transition"
-          >
-            Logout
-          </button>
+          <StoreSwitcher />
         </div>
       </nav>
 

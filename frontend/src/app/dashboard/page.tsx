@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import StoreSwitcher from "@/components/StoreSwitcher";
 import {
   getProducts,
   testStore,
@@ -14,7 +15,7 @@ import {
 import type { AutomationRun, NotificationItem } from "@/lib/api";
 
 export default function DashboardPage() {
-  const { token, shop, setShop, logout } = useAuth();
+  const { token, shop, setShop } = useAuth();
   const router = useRouter();
   const [shopInput, setShopInput] = useState("");
   const [productCount, setProductCount] = useState<number | null>(null);
@@ -75,15 +76,7 @@ export default function DashboardPage() {
           Auto<span className="text-blue-500">Drop</span> AI
         </h1>
         <div className="flex items-center gap-4">
-          {shop && (
-            <span className="text-gray-400 text-sm">{shop}</span>
-          )}
-          <button
-            onClick={logout}
-            className="text-gray-400 hover:text-white text-sm transition"
-          >
-            Logout
-          </button>
+          <StoreSwitcher />
         </div>
       </nav>
 

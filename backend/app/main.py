@@ -24,6 +24,7 @@ from app.routers.health import router as health_router
 from app.routers.analytics import router as analytics_router
 from app.routers.automation import router as automation_router
 from app.routers.notifications import router as notifications_router
+from app.routers.stores import router as stores_router
 from app.core.middleware import (
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
@@ -71,6 +72,7 @@ app.include_router(health_router)
 app.include_router(analytics_router)
 app.include_router(automation_router)
 app.include_router(notifications_router)
+app.include_router(stores_router)
 
 
 @app.get("/")

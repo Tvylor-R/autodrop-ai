@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import StoreSwitcher from "@/components/StoreSwitcher";
 import {
   getAnalyticsSummary,
   getAnalyticsRevenue,
@@ -37,7 +38,7 @@ interface Product {
 }
 
 export default function AnalyticsPage() {
-  const { token, shop, logout } = useAuth();
+  const { token, shop } = useAuth();
   const router = useRouter();
   const [days, setDays] = useState(30);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -164,12 +165,7 @@ export default function AnalyticsPage() {
           >
             Products
           </button>
-          <button
-            onClick={logout}
-            className="text-gray-400 hover:text-white text-sm transition"
-          >
-            Logout
-          </button>
+          <StoreSwitcher />
         </div>
       </nav>
 
