@@ -102,6 +102,8 @@ export async function createProduct(
     title: string;
     vendor?: string;
     status?: string;
+    cost?: number;
+    shopify_variant_id?: string;
   }
 ) {
   return api(`/products/?shop=${encodeURIComponent(shop)}`, {
@@ -114,7 +116,13 @@ export async function createProduct(
 export async function updateProduct(
   token: string,
   productId: number,
-  data: { title?: string; vendor?: string; status?: string }
+  data: {
+    title?: string;
+    vendor?: string;
+    status?: string;
+    cost?: number;
+    shopify_variant_id?: string;
+  }
 ) {
   return api(`/products/${productId}`, {
     method: "PUT",

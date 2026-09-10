@@ -16,11 +16,15 @@ def test_create_product(db_session, sample_store):
         "New Product",
         "Vendor",
         "active",
+        cost=12.5,
+        shopify_variant_id="var_987",
     )
 
     assert product.title == "New Product"
     assert product.shopify_product_id == "789"
     assert product.store_id == sample_store.id
+    assert product.cost == 12.5
+    assert product.shopify_variant_id == "var_987"
 
 
 def test_create_product_updates_existing(db_session, sample_product):
@@ -31,11 +35,15 @@ def test_create_product_updates_existing(db_session, sample_product):
         "Updated Title",
         "New Vendor",
         "draft",
+        cost=9.99,
+        shopify_variant_id="var_123",
     )
 
     assert product.id == sample_product.id
     assert product.title == "Updated Title"
     assert product.vendor == "New Vendor"
+    assert product.cost == 9.99
+    assert product.shopify_variant_id == "var_123"
 
 
 def test_get_products(db_session, sample_store, sample_product):
@@ -56,9 +64,13 @@ def test_update_product(db_session, sample_product):
         sample_product.id,
         title="Renamed",
         status="draft",
+        cost=15.25,
+        shopify_variant_id="var_555",
     )
     assert updated.title == "Renamed"
     assert updated.status == "draft"
+    assert updated.cost == 15.25
+    assert updated.shopify_variant_id == "var_555"
 
 
 def test_update_product_not_found(db_session):

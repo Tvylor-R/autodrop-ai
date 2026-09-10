@@ -63,7 +63,9 @@ def add_product(
         product.shopify_product_id,
         product.title,
         product.vendor,
-        product.status
+        product.status,
+        product.cost,
+        product.shopify_variant_id,
     )
 
 
@@ -74,7 +76,15 @@ def modify_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    updated = update_product(db, product_id, product.title, product.vendor, product.status)
+    updated = update_product(
+        db,
+        product_id,
+        product.title,
+        product.vendor,
+        product.status,
+        product.cost,
+        product.shopify_variant_id,
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Product not found")
     return updated

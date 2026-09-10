@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   getProducts,
   createProduct,
+  updateProduct,
   deleteProduct,
   syncProducts,
   aiDescribe,
@@ -15,9 +16,11 @@ import {
 interface Product {
   id: number;
   shopify_product_id: string;
+  shopify_variant_id: string | null;
   title: string;
   vendor: string | null;
   status: string | null;
+  cost: number | null;
   created_at: string;
 }
 
@@ -41,6 +44,14 @@ export default function ProductsPage() {
     seo_description: string;
   } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    vendor: "",
+    status: "active",
+    cost: "",
+  });
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(
@@ -135,6 +146,42 @@ export default function ProductsPage() {
       await loadProducts();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete product");
+    }
+  };
+
+  const handleOpenEdit = (product: Product) => {
+    setEditing(product);
+    setEditForm({
+      title: product.title,
+      vendor: product.vendor || "",
+      status: product.status || "active",
+      cost: product.cost != null ? String(product.cost) : "",
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !editing) return;
+
+    const cost = editForm.cost.trim();
+    const parsedCost =
+      cost !== "" && !Number.isNaN(Number(cost)) ? Number(cost) : undefined;
+
+    setSaving(true);
+    setError("");
+    try {
+      await updateProduct(token, editing.id, {
+        title: editForm.title.trim(),
+        vendor: editForm.vendor.trim() || undefined,
+        status: editForm.status,
+        cost: parsedCost,
+      });
+      setEditing(null);
+      await loadProducts();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update product");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -335,6 +382,7 @@ export default function ProductsPage() {
                   <th className="px-6 py-3">Title</th>
                   <th className="px-6 py-3">Vendor</th>
                   <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3 text-right">Cost</th>
                   <th className="px-6 py-3">Shopify ID</th>
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
@@ -374,11 +422,20 @@ export default function ProductsPage() {
                         {product.status || "unknown"}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right font-medium">
+                      {product.cost != null ? `$${product.cost.toFixed(2)}` : "--"}
+                    </td>
                     <td className="px-6 py-4 text-gray-500 text-sm">
                       {product.shopify_product_id}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => handleOpenEdit(product)}
+                          className="text-blue-400 hover:text-blue-300 text-sm transition"
+                        >
+                          Edit
+                        </button>
                         <button
                           onClick={() => handleAiDescribe(product)}
                           className="text-purple-400 hover:text-purple-300 text-sm transition"
@@ -406,6 +463,99 @@ export default function ProductsPage() {
           </div>
         )}
       </main>
+
+      {editing && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <form
+            onSubmit={handleSaveEdit}
+            className="bg-gray-900 border border-gray-700 rounded-lg max-w-2xl w-full p-6 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Edit Product</h3>
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm text-gray-400">Title</label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                  required
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-gray-400">Vendor (optional)</label>
+                <input
+                  type="text"
+                  value={editForm.vendor}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, vendor: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-gray-400">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, status: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-gray-400">
+                  Cost (used by repricing) (optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editForm.cost}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, cost: e.target.value })
+                  }
+                  placeholder="0.00"
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg text-sm font-medium transition"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* AI Description Modal */}
       {aiModal && (
