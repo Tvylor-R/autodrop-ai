@@ -17,6 +17,8 @@ celery_app.conf.update(
     task_track_started=True,
 )
 
+celery_app.autodiscover_tasks(["app.worker"])
+
 celery_app.conf.beat_schedule = {
     "sync-products-every-6-hours": {
         "task": "app.sync_products",
