@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { getProducts, testStore } from "@/lib/api";
+import {
+  getProducts,
+  testStore,
+  getNotifications,
+  getNotificationUnreadCount,
+  getAutomationRuns,
+} from "@/lib/api";
+import type { AutomationRun, NotificationItem } from "@/lib/api";
 
 export default function DashboardPage() {
   const { token, shop, setShop, logout } = useAuth();
@@ -12,6 +19,9 @@ export default function DashboardPage() {
   const [shopInput, setShopInput] = useState("");
   const [productCount, setProductCount] = useState<number | null>(null);
   const [storeStatus, setStoreStatus] = useState<string>("unknown");
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
 
   useEffect(() => {
     if (!token) {
@@ -36,6 +46,18 @@ export default function DashboardPage() {
         setProductCount(products.length);
       })
       .catch(() => setProductCount(0));
+
+    getNotificationUnreadCount(token, shop)
+      .then((data) => setUnreadCount(data.count))
+      .catch(() => setUnreadCount(0));
+
+    getNotifications(token, shop)
+      .then((data) => setNotifications(data.slice(0, 5)))
+      .catch(() => setNotifications([]));
+
+    getAutomationRuns(token, shop)
+      .then((data) => setRuns(data.slice(0, 5)))
+      .catch(() => setRuns([]));
   }, [token, shop]);
 
   const handleConnect = () => {
@@ -93,6 +115,7 @@ export default function DashboardPage() {
         )}
 
         {shop && (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-gray-900 border border-gray-700 rounded-lg p-6">
               <p className="text-gray-400 text-sm">Store</p>
@@ -169,6 +192,100 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Alerts &amp; Notifications</h3>
+                <span
+                  className={`px-2 py-1 text-xs rounded ${
+                    unreadCount > 0
+                      ? "bg-blue-900/50 text-blue-400"
+                      : "bg-gray-800 text-gray-400"
+                  }`}
+                >
+                  {unreadCount} unread
+                </span>
+              </div>
+              {notifications.length === 0 ? (
+                <p className="text-sm text-gray-500">No notifications yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className="flex items-start gap-2 text-sm"
+                    >
+                      <span
+                        className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                          n.is_read ? "bg-gray-700" : "bg-blue-400"
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-gray-200 truncate">
+                          {n.title || n.type || "Notification"}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(n.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Link
+                href="/dashboard/settings"
+                className="block text-blue-400 hover:underline text-sm pt-2"
+              >
+                Manage in Settings
+              </Link>
+            </div>
+
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 space-y-3">
+              <h3 className="text-lg font-medium">Recent Automation Runs</h3>
+              {runs.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No automation runs yet. Create a rule in Settings.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {runs.map((run) => (
+                    <div
+                      key={run.id}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-gray-200 truncate">
+                          Rule #{run.rule_id} &mdash; {run.summary || run.status}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(run.ran_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-2 py-1 text-xs rounded shrink-0 ${
+                          run.status === "success"
+                            ? "bg-green-900/50 text-green-400"
+                            : run.status === "error"
+                            ? "bg-red-900/50 text-red-400"
+                            : "bg-gray-800 text-gray-400"
+                        }`}
+                      >
+                        {run.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Link
+                href="/dashboard/settings"
+                className="block text-blue-400 hover:underline text-sm pt-2"
+              >
+Manage Automation
+            </Link>
+            </div>
+          </div>
+          </>
         )}
       </main>
     </div>
