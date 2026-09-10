@@ -1,0 +1,17 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "7bc7ffcb47824d3729f6cf990a9cd464"
+application_url = "http://localhost:8000"
+embedded = true
+name = "AutoDrop AI"
+
+[access_scopes]
+scopes = "read_products,write_products,read_inventory,write_inventory,read_orders"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [ "http://localhost:8000/shopify/callback" ]
+
+[webhooks]
+api_version = "2026-07"

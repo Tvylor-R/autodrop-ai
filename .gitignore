@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.env
+backend/.env
+node_modules/
+.next/
+dist/
+.mypy_cache/
+.pytest_cache/
+*.pyc
+backend/venv/
+backend/passlib-1.7.4-py2.py3-none-any.whl
+frontend/.next/
