@@ -8,7 +8,11 @@ import {
   getAnalyticsRevenue,
   getAnalyticsOrders,
   getBestProducts,
+  getProducts,
+  getAutomationRules,
+  runAutomationRule,
 } from "@/lib/api";
+import type { AutomationRule } from "@/lib/api";
 
 interface Summary {
   period_days: number;
@@ -25,6 +29,13 @@ interface BestProduct {
   revenue: number;
 }
 
+interface Product {
+  id: number;
+  title: string;
+  cost: number | null;
+  shopify_variant_id: string | null;
+}
+
 export default function AnalyticsPage() {
   const { token, shop, logout } = useAuth();
   const router = useRouter();
@@ -33,18 +44,24 @@ export default function AnalyticsPage() {
   const [revenue, setRevenue] = useState<Record<string, number>>({});
   const [orderTrend, setOrderTrend] = useState<Record<string, number>>({});
   const [bestProducts, setBestProducts] = useState<BestProduct[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [multiplier, setMultiplier] = useState(2.5);
+  const [running, setRunning] = useState(false);
+  const [runMessage, setRunMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const loadAnalytics = useCallback(async () => {
     if (!token || !shop) return;
     setError("");
+    setRunMessage("");
     try {
-      const [s, r, o, b] = await Promise.all([
+      const [s, r, o, b, p] = await Promise.all([
         getAnalyticsSummary(token, shop, days),
         getAnalyticsRevenue(token, shop, days),
         getAnalyticsOrders(token, shop, days),
         getBestProducts(token, shop, days),
+        getProducts(token, shop),
       ]);
       setSummary(s as Summary);
       setRevenue((r as { daily_revenue: Record<string, number> }).daily_revenue);
@@ -52,6 +69,7 @@ export default function AnalyticsPage() {
         (o as { daily_orders: Record<string, number> }).daily_orders
       );
       setBestProducts((b as { best_products: BestProduct[] }).best_products);
+      setProducts(p as Product[]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load analytics");
       setSummary(null);
@@ -59,6 +77,52 @@ export default function AnalyticsPage() {
       setLoading(false);
     }
   }, [token, shop, days]);
+
+  const handleRunRepricing = async () => {
+    if (!token || !shop) return;
+    setRunning(true);
+    setError("");
+    setRunMessage("");
+    try {
+      const rules = (await getAutomationRules(token, shop)) as AutomationRule[];
+      const repricing = rules.find((r) => r.rule_type === "repricing");
+      if (!repricing) {
+        setRunMessage(
+          "No repricing rule configured. Add one in Settings > Automation."
+        );
+        return;
+      }
+      const res = (await runAutomationRule(token, shop, repricing.id)) as {
+        status?: string;
+        summary?: string;
+      };
+      setRunMessage(
+        res.summary || `Repricing rule finished (${res.status ?? "done"}).`
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to run repricing");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const avgPriceByTitle = new Map<string, number>();
+  bestProducts.forEach((bp) => {
+    avgPriceByTitle.set(bp.title.toLowerCase(), bp.revenue / bp.quantity);
+  });
+
+  const pricingRows = products
+    .filter((p) => p.cost != null && p.cost > 0)
+    .map((p) => {
+      const avg = avgPriceByTitle.get(p.title.toLowerCase()) ?? null;
+      const cost = p.cost as number;
+      const suggested = cost * multiplier;
+      const marginAtAvg =
+        avg && avg > 0 ? ((avg - cost) / avg) * 100 : null;
+      return { product: p, mid: avg, suggested, marginAtAvg };
+    })
+    .sort((a, b) => b.suggested - a.suggested)
+    .slice(0, 12);
 
   useEffect(() => {
     if (!token) {
@@ -271,6 +335,97 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Pricing & Margin */}
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h3 className="text-lg font-medium">
+                  Pricing &amp; Margin Suggestions
+                </h3>
+                <div className="flex gap-2">
+                  {[2, 2.5, 3, 5].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setMultiplier(m)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
+                        multiplier === m
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-800 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      {m}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-400">
+                Suggested retail = product cost &times; margin. Set costs on the
+                Products page, then apply with the repricing rule.
+              </p>
+
+              {runMessage && (
+                <div className="bg-blue-900/30 border border-blue-700 text-blue-200 px-4 py-3 rounded-lg text-sm">
+                  {runMessage}
+                </div>
+              )}
+
+              {pricingRows.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No products with a cost set. Open Products &gt; Edit to add
+                  costs, or import via the CSV template.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {pricingRows.map(({ product, mid, suggested, marginAtAvg }) => (
+                    <div
+                      key={product.id}
+                      className="flex items-center justify-between py-2 border-b border-gray-800 flex-wrap gap-2"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-white truncate">
+                          {product.title}
+                        </span>
+                        <span className="text-xs text-gray-500 shrink-0">
+                          cost ${(product.cost as number).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        {mid != null ? (
+                          <span className="text-gray-400">
+                            avg ${mid.toFixed(2)}{" "}
+                            <span
+                              className={
+                                marginAtAvg != null && marginAtAvg > 0
+                                  ? "text-green-400"
+                                  : "text-red-400"
+                              }
+                            >
+                              ({marginAtAvg?.toFixed(0)}%)
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">no sales yet</span>
+                        )}
+                        <span className="text-blue-300 font-medium">
+                          ${suggested.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  onClick={handleRunRepricing}
+                  disabled={running}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg text-sm font-medium transition"
+                >
+                  {running ? "Running..." : "Run Repricing Now"}
+                </button>
+              </div>
             </div>
           </>
         ) : null}
