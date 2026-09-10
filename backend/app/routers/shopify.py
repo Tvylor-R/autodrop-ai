@@ -13,7 +13,7 @@ from app.integrations.shopify import (
     exchange_token,
     register_webhooks,
 )
-from app.core.config import SHOPIFY_REDIRECT_URI
+from app.core.config import SHOPIFY_REDIRECT_URI, FRONTEND_URL
 
 
 router = APIRouter(
@@ -56,12 +56,9 @@ def callback(
     webhook_url = f"{str(request.base_url).rstrip('/')}/webhooks/shopify"
     registered = register_webhooks(shop, access_token, webhook_url)
 
-    return {
-        "message": "Shop connected successfully",
-        "shop": store.shop_domain,
-        "token_saved": True,
-        "webhooks_registered": registered,
-    }
+    return RedirectResponse(
+        f"{FRONTEND_URL}/shopify/callback?shop={shop}&status=success"
+    )
 
 
 @router.get("/sync")
