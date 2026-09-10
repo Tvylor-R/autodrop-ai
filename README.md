@@ -150,7 +150,25 @@ All routes except `/users/register`, `/users/login`, `/shopify/connect`, `/shopi
 | `GET` | `/store/inventory` | Inventory from webhooks |
 | `GET` | `/store/inventory/live` | Inventory from Shopify API |
 | `GET` | `/store/inventory/alerts` | Low stock alerts |
+| `PUT` | `/store/settings` | Update notification channels & thresholds |
 | `POST` | `/store/webhooks/register` | Re-register store webhooks |
+| `POST` | `/actions/products` | Create product in Shopify |
+| `POST` | `/actions/orders/fulfill` | Fulfill a Shopify order |
+| `POST` | `/actions/orders/cancel` | Cancel a Shopify order |
+| `POST` | `/actions/inventory/update` | Set inventory level |
+| `GET` | `/import/template` | Download CSV import template |
+| `POST` | `/import/products` | Bulk import products from CSV |
+| `GET` | `/automation/rules` | List automation rules |
+| `POST` | `/automation/rules` | Create a rule |
+| `GET/PUT/DELETE` | `/automation/rules/{id}` | Manage a rule |
+| `POST` | `/automation/rules/{id}/toggle` | Enable / disable a rule |
+| `POST` | `/automation/rules/{id}/run` | Run a rule now |
+| `GET` | `/automation/runs` | Recent rule executions |
+| `GET` | `/notifications` | List notifications |
+| `GET` | `/notifications/unread-count` | Unread count |
+| `POST` | `/notifications/{id}/read` | Mark notification read |
+| `POST` | `/notifications/deliver` | Deliver notifications now |
+| `GET` | `/users/me` | Current user profile |
 | `GET` | `/analytics/summary` | Revenue & order summary |
 | `GET` | `/analytics/revenue` | Daily revenue |
 | `GET` | `/analytics/orders/trend` | Orders per day |

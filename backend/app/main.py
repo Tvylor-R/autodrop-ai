@@ -10,6 +10,8 @@ from app.database.models import User
 from app.database.store_model import Store
 from app.database.product_model import Product
 from app.database.webhook_models import Order, InventoryLevel
+from app.database.automation_models import AutomationRule, AutomationRun
+from app.database.notification_models import Notification
 from app.routers.shopify import router as shopify_router
 from app.routers.users import router as user_router
 from app.routers.products import router as product_router
@@ -20,6 +22,8 @@ from app.routers.actions import router as actions_router
 from app.routers.bulk_import import router as bulk_import_router
 from app.routers.health import router as health_router
 from app.routers.analytics import router as analytics_router
+from app.routers.automation import router as automation_router
+from app.routers.notifications import router as notifications_router
 from app.core.middleware import (
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
@@ -65,6 +69,8 @@ app.include_router(actions_router)
 app.include_router(bulk_import_router)
 app.include_router(health_router)
 app.include_router(analytics_router)
+app.include_router(automation_router)
+app.include_router(notifications_router)
 
 
 @app.get("/")

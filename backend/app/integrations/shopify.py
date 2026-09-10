@@ -246,6 +246,30 @@ def fulfill_order(
     return response.json()["fulfillment"]
 
 
+def update_product_price(
+    shop: str,
+    access_token: str,
+    variant_id: int,
+    price: float,
+):
+    url = f"https://{shop}/admin/api/{SHOPIFY_API_VERSION}/variants/{variant_id}.json"
+
+    response = requests.put(
+        url,
+        headers={
+            "X-Shopify-Access-Token": access_token,
+            "Content-Type": "application/json",
+        },
+        json={"variant": {"id": variant_id, "price": str(price)}},
+    )
+
+    if response.status_code not in (200, 201):
+        logger.error(f"Failed to update product price: {response.text}")
+        raise Exception(response.text)
+
+    return response.json()["variant"]
+
+
 def cancel_order(
     shop: str,
     access_token: str,

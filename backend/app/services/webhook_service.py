@@ -11,6 +11,7 @@ from app.core.config import SHOPIFY_CLIENT_SECRET
 from app.database.store_model import Store
 from app.database.webhook_models import Order, InventoryLevel
 from app.database.product_model import Product
+from app.services.notification_service import create_notification
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,24 @@ def process_order_created(db: Session, store_id: int, data: dict):
     db.add(order)
     db.commit()
     logger.info(f"Order created: {shopify_order_id} for store {store_id}")
+
+    create_notification(
+        db,
+        store_id,
+        "order_received",
+        title=f"New order {data.get('order_number', shopify_order_id)}",
+        message=(
+            f"Order {data.get('order_number', shopify_order_id)} for "
+            f"${float(data.get('total_price', 0)):.2f} "
+            f"({data.get('financial_status', 'unknown')})."
+        ),
+        severity="info",
+        payload={
+            "shopify_order_id": shopify_order_id,
+            "order_number": data.get("order_number"),
+            "total_price": data.get("total_price"),
+        },
+    )
     return order
 
 
@@ -109,6 +128,23 @@ def process_order_updated(db: Session, store_id: int, data: dict):
 
     db.commit()
     logger.info(f"Order updated: {shopify_order_id}")
+
+    if order.fulfillment_status == "fulfilled":
+        create_notification(
+            db,
+            store_id,
+            "order_fulfilled",
+            title=f"Order {order.order_number or shopify_order_id} fulfilled",
+            message=(
+                f"Order {order.order_number or shopify_order_id} "
+                f"({order.total_price:.2f} {order.currency or 'USD'}) was fulfilled."
+            ),
+            severity="info",
+            payload={
+                "shopify_order_id": shopify_order_id,
+                "order_number": order.order_number,
+            },
+        )
     return order
 
 

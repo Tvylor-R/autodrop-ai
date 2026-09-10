@@ -7,6 +7,7 @@ from app.database.store_model import Store
 from app.database.webhook_models import Order, InventoryLevel
 from app.core.dependencies import get_current_user
 from app.schemas.shopify import OrderResponse, InventoryResponse
+from app.schemas.store import StoreInfoResponse, StoreSettingsUpdate
 from app.integrations.shopify import get_orders, get_inventory_levels, register_webhooks
 
 
@@ -23,7 +24,7 @@ def _get_store(db: Session, shop: str) -> Store:
     return store
 
 
-@router.get("/info")
+@router.get("/info", response_model=StoreInfoResponse)
 def store_info(
     shop: str,
     db: Session = Depends(get_db),
@@ -34,6 +35,38 @@ def store_info(
     return {
         "shop_domain": store.shop_domain,
         "connected": bool(store.access_token),
+        "notification_email": store.notification_email,
+        "notification_webhook_url": store.notification_webhook_url,
+        "low_stock_threshold": store.low_stock_threshold,
+        "created_at": store.created_at,
+    }
+
+
+@router.put("/settings", response_model=StoreInfoResponse)
+def update_store_settings(
+    shop: str,
+    payload: StoreSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    store = _get_store(db, shop)
+
+    if payload.notification_email is not None:
+        store.notification_email = payload.notification_email
+    if payload.notification_webhook_url is not None:
+        store.notification_webhook_url = payload.notification_webhook_url or None
+    if payload.low_stock_threshold is not None:
+        store.low_stock_threshold = payload.low_stock_threshold
+
+    db.commit()
+    db.refresh(store)
+
+    return {
+        "shop_domain": store.shop_domain,
+        "connected": bool(store.access_token),
+        "notification_email": store.notification_email,
+        "notification_webhook_url": store.notification_webhook_url,
+        "low_stock_threshold": store.low_stock_threshold,
         "created_at": store.created_at,
     }
 

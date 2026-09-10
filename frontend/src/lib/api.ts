@@ -349,3 +349,177 @@ export async function downloadTemplate() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export interface AutomationRule {
+  id: number;
+  store_id: number;
+  name: string;
+  rule_type: "auto_fulfill" | "repricing" | "low_stock";
+  config: Record<string, unknown>;
+  enabled: boolean;
+  last_run_at: string | null;
+  last_status: string | null;
+  last_count: number | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationRun {
+  id: number;
+  rule_id: number;
+  status: string;
+  summary: string | null;
+  error: string | null;
+  ran_at: string;
+}
+
+export interface NotificationItem {
+  id: number;
+  store_id: number;
+  type: string | null;
+  severity: string | null;
+  title: string | null;
+  message: string | null;
+  payload: Record<string, unknown> | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export async function getStoreInfoExtended(token: string, shop: string) {
+  return api(`/store/info?shop=${encodeURIComponent(shop)}`, { token });
+}
+
+export async function updateStoreSettings(
+  token: string,
+  shop: string,
+  data: {
+    notification_email?: string;
+    notification_webhook_url?: string;
+    low_stock_threshold?: number;
+  }
+) {
+  return api(`/store/settings?shop=${encodeURIComponent(shop)}`, {
+    method: "PUT",
+    body: data,
+    token,
+  });
+}
+
+export async function getNotifications(
+  token: string,
+  shop: string,
+  unreadOnly = false
+) {
+  return api<NotificationItem[]>(
+    `/notifications?shop=${encodeURIComponent(shop)}&unread_only=${unreadOnly}`,
+    { token }
+  );
+}
+
+export async function getNotificationUnreadCount(token: string, shop: string) {
+  return api<{ count: number }>(
+    `/notifications/unread-count?shop=${encodeURIComponent(shop)}`,
+    { token }
+  );
+}
+
+export async function markNotificationRead(
+  token: string,
+  shop: string,
+  notificationId: number
+) {
+  return api(
+    `/notifications/${notificationId}/read?shop=${encodeURIComponent(shop)}`,
+    { method: "POST", token }
+  );
+}
+
+export async function deliverNotifications(token: string, shop: string) {
+  return api(
+    `/notifications/deliver?shop=${encodeURIComponent(shop)}`,
+    { method: "POST", token }
+  );
+}
+
+export async function getAutomationRules(token: string, shop: string) {
+  return api<AutomationRule[]>(
+    `/automation/rules?shop=${encodeURIComponent(shop)}`,
+    { token }
+  );
+}
+
+export async function createAutomationRule(
+  token: string,
+  shop: string,
+  data: {
+    name: string;
+    rule_type: string;
+    config?: Record<string, unknown>;
+    enabled?: boolean;
+  }
+) {
+  return api(`/automation/rules?shop=${encodeURIComponent(shop)}`, {
+    method: "POST",
+    body: data,
+    token,
+  });
+}
+
+export async function updateAutomationRule(
+  token: string,
+  shop: string,
+  ruleId: number,
+  data: { name?: string; config?: Record<string, unknown>; enabled?: boolean }
+) {
+  return api(`/automation/rules/${ruleId}?shop=${encodeURIComponent(shop)}`, {
+    method: "PUT",
+    body: data,
+    token,
+  });
+}
+
+export async function toggleAutomationRule(
+  token: string,
+  shop: string,
+  ruleId: number
+) {
+  return api(
+    `/automation/rules/${ruleId}/toggle?shop=${encodeURIComponent(shop)}`,
+    { method: "POST", token }
+  );
+}
+
+export async function runAutomationRule(
+  token: string,
+  shop: string,
+  ruleId: number
+) {
+  return api(
+    `/automation/rules/${ruleId}/run?shop=${encodeURIComponent(shop)}`,
+    { method: "POST", token }
+  );
+}
+
+export async function deleteAutomationRule(
+  token: string,
+  shop: string,
+  ruleId: number
+) {
+  return api(`/automation/rules/${ruleId}?shop=${encodeURIComponent(shop)}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export async function getAutomationRuns(
+  token: string,
+  shop: string,
+  ruleId?: number
+) {
+  const ruleParam = ruleId ? `&rule_id=${ruleId}` : "";
+  return api<AutomationRun[]>(
+    `/automation/runs?shop=${encodeURIComponent(shop)}${ruleParam}`,
+    { token }
+  );
+}

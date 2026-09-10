@@ -16,7 +16,9 @@ app/
 │   ├── models.py          # User model
 │   ├── store_model.py     # Store model
 │   ├── product_model.py   # Product model
-│   └── webhook_models.py  # Order & Inventory models
+│   ├── webhook_models.py  # Order & Inventory models
+│   ├── automation_models.py  # Automation rules & run history
+│   └── notification_models.py # Store notifications
 ├── integrations/
 │   └── shopify.py         # Shopify Admin API client
 ├── routers/
@@ -25,9 +27,16 @@ app/
 │   ├── products.py        # Product CRUD
 │   ├── ai.py              # AI features
 │   ├── webhooks.py        # Webhook receiver
-│   ├── store_data.py      # Orders & inventory
+│   ├── store_data.py      # Orders, inventory & store settings
+│   ├── actions.py         # Shopify write actions
+│   ├── bulk_import.py     # CSV product import
 │   ├── analytics.py       # Revenue analytics
+│   ├── automation.py      # Automation rule CRUD & run
+│   ├── notifications.py   # Notifications & delivery
 │   └── health.py          # Health checks
+├── worker/
+│   ├── celery_app.py      # Celery app + beat schedule
+│   └── tasks.py           # Background tasks
 ├── schemas/               # Pydantic request/response models
 └── services/              # Business logic
     ├── user_service.py
@@ -35,7 +44,9 @@ app/
     ├── product_service.py
     ├── shopify_service.py
     ├── ai_service.py
-    └── webhook_service.py
+    ├── webhook_service.py
+    ├── automation_service.py
+    └── notification_service.py
 ```
 
 ## Setup
@@ -59,6 +70,44 @@ alembic upgrade head
 # Start server
 uvicorn app.main:app --reload
 ```
+
+## Background Workers (Celery + Redis)
+
+Periodic automation and delivery are run by Celery workers with Redis as the broker:
+
+```bash
+# Start a worker
+celery -A app.worker.celery_app worker --loglevel=info
+
+# Start the beat scheduler (for periodic jobs)
+celery -A app.worker.celery_app beat --loglevel=info
+```
+
+Scheduled tasks:
+
+| Task | Schedule |
+| --- | --- |
+| Sync products from Shopify | every 6h |
+| Auto-fulfill paid orders | every 5 min |
+| AI repricing | every 6h |
+| Low-stock alerts | every 15 min |
+| Deliver pending notifications | every minute |
+
+Rules can also be triggered on-demand via `POST /automation/rules/{id}/run`. All of this is wired into `docker-compose.yml` (`redis`, `worker`, `beat` services); to opt out of Redis, leave the broker unset and rely on manual "Run now".
+
+## Automation Rules
+
+Rules automate store operations per store. Available rule types:
+
+- **auto_fulfill** - fulfills paid, unfulfilled Shopify orders (`config.notify_customer`)
+- **repricing** - recalculates product prices as cost × (1 + `margin_pct / 100`) and writes them to Shopify; opt into AI suggestions with `use_ai`
+- **low_stock** - creates low-stock alerts when `available <= threshold`
+
+Rule executions are recorded in `automation_runs` and surfaced with `GET /automation/runs`.
+
+## Notifications
+
+Events (new orders, order fulfillments, low stock) create rows in `notifications`. Delivery uses a webhook URL and/or SMTP email configured on the store (`PUT /store/settings`). `POST /notifications/deliver` triggers delivery immediately; the beat scheduler delivers periodically.
 
 ## Running Tests
 
