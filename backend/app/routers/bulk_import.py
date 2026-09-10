@@ -20,7 +20,7 @@ router = APIRouter(
     tags=["Bulk Import"]
 )
 
-CSV_COLUMNS = ["title", "vendor", "price", "sku", "product_type", "tags", "body_html", "status"]
+CSV_COLUMNS = ["title", "vendor", "price", "cost", "sku", "product_type", "tags", "body_html", "status"]
 MAX_FILE_SIZE = 5 * 1024 * 1024
 MAX_ROWS = 200
 
@@ -34,7 +34,7 @@ def _get_store(db: Session, shop: str) -> Store:
     return store
 
 
-def _save_local_product(db: Session, store_id: int, product: dict) -> Product:
+def _save_local_product(db: Session, store_id: int, product: dict, cost: float = None) -> Product:
     external_id = str(product.get("id"))
     db_product = (
         db.query(Product)
@@ -46,6 +46,8 @@ def _save_local_product(db: Session, store_id: int, product: dict) -> Product:
         db_product.title = product.get("title")
         db_product.vendor = product.get("vendor")
         db_product.status = product.get("status", "active")
+        if cost is not None:
+            db_product.cost = cost
         db.commit()
         db.refresh(db_product)
         return db_product
@@ -56,6 +58,7 @@ def _save_local_product(db: Session, store_id: int, product: dict) -> Product:
         title=product.get("title"),
         vendor=product.get("vendor"),
         status=product.get("status", "active"),
+        cost=cost,
     )
     db.add(db_product)
     db.commit()
@@ -73,6 +76,7 @@ def import_template():
             "title": "Example Product",
             "vendor": "Your Brand",
             "price": "19.99",
+            "cost": "8.50",
             "sku": "EXMP-001",
             "product_type": "Apparel",
             "tags": "new,trending",
@@ -131,6 +135,22 @@ async def import_products(
         if sku:
             variants[0]["sku"] = sku
 
+        cost_raw = (row.get("cost") or "").strip()
+        cost = None
+        if cost_raw:
+            try:
+                cost = float(cost_raw)
+            except ValueError:
+                failed.append(
+                    {
+                        "row": index,
+                        "title": title,
+                        "status": "failed",
+                        "error": f"Invalid cost: {cost_raw}",
+                    }
+                )
+                continue
+
         try:
             product = create_product(
                 shop,
@@ -149,7 +169,7 @@ async def import_products(
             )
             continue
 
-        _save_local_product(db, store.id, product)
+        _save_local_product(db, store.id, product, cost=cost)
         imported.append(
             {
                 "row": index,

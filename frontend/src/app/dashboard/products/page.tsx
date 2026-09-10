@@ -266,6 +266,12 @@ export default function ProductsPage() {
               {syncing ? "Syncing..." : "Sync from Shopify"}
             </button>
             <button
+              onClick={() => router.push("/dashboard/import")}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition"
+            >
+              Bulk Import
+            </button>
+            <button
               onClick={() => setShowAdd(!showAdd)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition"
             >

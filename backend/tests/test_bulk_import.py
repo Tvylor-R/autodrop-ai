@@ -15,6 +15,21 @@ from app.schemas.user import UserCreate
 from app.routers import bulk_import
 
 
+class _SaveSpy:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, db, store_id, product, cost=None):
+        self.calls.append({"store_id": store_id, "cost": cost})
+        return {
+            "id": product.get("id"),
+            "title": product.get("title"),
+            "vendor": product.get("vendor"),
+            "status": "active",
+            "cost": cost,
+        }
+
+
 @pytest.fixture
 def client_with_store():
     engine = create_engine(
@@ -165,3 +180,49 @@ def test_import_requires_auth(client_with_store):
         files={"file": ("products.csv", b"title\nWidget", "text/csv")},
     )
     assert response.status_code == 401
+
+
+def test_import_stores_cost(client_with_store, monkeypatch):
+    def fake_create_product(shop, access_token, **kwargs):
+        return {
+            "id": 2000,
+            "title": kwargs["title"],
+            "vendor": kwargs.get("vendor"),
+            "status": "active",
+        }
+
+    spy = _SaveSpy()
+
+    monkeypatch.setattr(bulk_import, "create_product", fake_create_product)
+    monkeypatch.setattr(bulk_import, "_save_local_product", spy)
+
+    header = _auth_header(client_with_store)
+    csv_content = "title,vendor,price,cost\nWidget,Acme,19.99,8.50"
+    response = client_with_store.post(
+        "/import/products?shop=import-store.myshopify.com",
+        headers=header,
+        files={"file": ("products.csv", csv_content.encode("utf-8"), "text/csv")},
+    )
+    assert response.status_code == 200
+    assert response.json()["imported"] == 1
+    assert spy.calls[0]["cost"] == 8.5
+
+
+def test_import_rejects_invalid_cost(client_with_store, monkeypatch):
+    def fake_create_product(shop, access_token, **kwargs):
+        return {"id": 2001, "title": kwargs["title"]}
+
+    monkeypatch.setattr(bulk_import, "create_product", fake_create_product)
+
+    header = _auth_header(client_with_store)
+    csv_content = "title,vendor,cost\nWidget,Acme,not-a-number"
+    response = client_with_store.post(
+        "/import/products?shop=import-store.myshopify.com",
+        headers=header,
+        files={"file": ("products.csv", csv_content.encode("utf-8"), "text/csv")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["imported"] == 0
+    assert data["failed"] == 1
+    assert "Invalid cost" in data["errors"][0]["error"]

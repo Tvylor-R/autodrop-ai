@@ -109,9 +109,10 @@ export default function ImportPage() {
           <p className="text-sm text-gray-400">
             Each row is created directly on Shopify. Supported columns:{" "}
             <code className="text-blue-400">
-              title, vendor, price, sku, product_type, tags, body_html, status
+              title, vendor, price, cost, sku, product_type, tags, body_html, status
             </code>
-            . Title is required.
+            . Title is required. Use <code className="text-blue-400">cost</code>{" "}
+            to enable margin-based repricing suggestions.
           </p>
 
           <input
